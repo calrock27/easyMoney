@@ -18,6 +18,7 @@ model User {
   theme     String   @default("system") // light, dark, tokyo
   income    Float    @default(0)
   expenses  Expense[]
+  categories Category[]
   createdAt DateTime @default(now())
 }
 
@@ -28,4 +29,13 @@ model Expense {
   category  String
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
 }
