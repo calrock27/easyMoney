@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: static-budget-app
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./web/prisma:/app/prisma # Persist SQLite DB
+      - ./web/public:/app/public # Persist uploads if any
+    environment:
+      - DATABASE_URL="file:./dev.db"

@@ -1,0 +1,31 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  currency  String   @default("USD")
+  theme     String   @default("system") // light, dark, tokyo
+  income    Float    @default(0)
+  expenses  Expense[]
+  createdAt DateTime @default(now())
+}
+
+model Expense {
+  id        String   @id @default(uuid())
+  name      String
+  amount    Float
+  category  String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
