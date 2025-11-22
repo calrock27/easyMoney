@@ -1,9 +1,10 @@
 "use client"
-"use client"
+
 
 import * as React from "react"
 import { Moon, Sun, Laptop } from "lucide-react"
 import { useTheme } from "next-themes"
+import { MountFuji } from "@/components/icons/mount-fuji"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -35,7 +36,7 @@ export function ThemeToggle() {
                     Dark
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme("tokyo")}>
-                    <Laptop className="mr-2 h-4 w-4" />
+                    <MountFuji className="mr-2 h-4 w-4" />
                     Tokyo
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme("system")}>

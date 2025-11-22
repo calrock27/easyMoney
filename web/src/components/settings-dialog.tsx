@@ -2,8 +2,9 @@
 
 import { useState, useRef } from 'react'
 import { useUser } from '@/components/providers/user-provider'
-import { updateCurrency, importData } from '@/app/actions/settings'
+import { updateCurrency, importData, clearData } from '@/app/actions/settings'
 import { getUserBudget } from '@/app/actions/budget'
+import { getCategories } from '@/app/actions/categories'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -14,7 +15,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import { Settings, Upload, Download, Save, Check, ChevronsUpDown } from 'lucide-react'
+import { Settings, Upload, Download, Save, Check, ChevronsUpDown, Trash2 } from 'lucide-react'
 import {
     Command,
     CommandEmpty,
@@ -31,11 +32,13 @@ import {
 import { cn } from "@/lib/utils"
 import { currencies } from "@/lib/currencies"
 
-export function SettingsDialog() {
+export function SettingsDialog({ trigger }: { trigger?: React.ReactNode }) {
     const { user, setUser } = useUser()
     const [open, setOpen] = useState(false)
     const [currency, setCurrency] = useState(user?.currency || 'USD')
     const [isLoading, setIsLoading] = useState(false)
+    const [isClearDialogOpen, setIsClearDialogOpen] = useState(false)
+    const [confirmUsername, setConfirmUsername] = useState('')
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     if (!user) return null
@@ -54,6 +57,7 @@ export function SettingsDialog() {
     async function handleExport() {
         setIsLoading(true)
         const res = await getUserBudget(user!.id)
+        const catRes = await getCategories(user!.id)
 
         if (res.success && res.data) {
             const fullUser = res.data
@@ -64,7 +68,8 @@ export function SettingsDialog() {
                     name: e.name,
                     amount: e.amount,
                     category: e.category
-                }))
+                })),
+                categories: catRes.success && catRes.data ? catRes.data.map(c => c.name) : []
             }
 
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -100,12 +105,30 @@ export function SettingsDialog() {
         if (fileInputRef.current) fileInputRef.current.value = ''
     }
 
+    async function handleClearData() {
+        if (confirmUsername.toLowerCase() !== user!.name.toLowerCase()) return
+
+        setIsLoading(true)
+        const res = await clearData(user!.id)
+        if (res.success) {
+            setIsClearDialogOpen(false)
+            setConfirmUsername('')
+            setOpen(false)
+            window.location.reload()
+        } else {
+            alert('Failed to clear data: ' + res.error)
+        }
+        setIsLoading(false)
+    }
+
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
-                    <Settings className="h-4 w-4" />
-                </Button>
+                {trigger || (
+                    <Button variant="outline" size="icon" title="Settings">
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
@@ -188,8 +211,57 @@ export function SettingsDialog() {
                         </p>
                     </div>
 
+                    <div className="border-t" />
+
+                    {/* Danger Zone */}
+                    <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-destructive">Danger Zone</h3>
+                        <Button
+                            variant="destructive"
+                            className="w-full gap-2"
+                            onClick={() => setIsClearDialogOpen(true)}
+                            disabled={isLoading}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            Clear All Data
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                            Permanently delete all expenses, custom categories, and reset income.
+                        </p>
+                    </div>
+
                 </div>
             </DialogContent>
+
+            <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Are you absolutely sure?</DialogTitle>
+                        <DialogDescription>
+                            This action cannot be undone. This will permanently delete your account data.
+                            <br /><br />
+                            Please type <span className="font-bold">{user.name}</span> to confirm.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <Input
+                            placeholder="Type your username"
+                            value={confirmUsername}
+                            onChange={(e) => setConfirmUsername(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setIsClearDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleClearData}
+                            disabled={confirmUsername.toLowerCase() !== user.name.toLowerCase() || isLoading}
+                        >
+                            {isLoading ? 'Deleting...' : 'Delete Everything'}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </Dialog>
     )
 }

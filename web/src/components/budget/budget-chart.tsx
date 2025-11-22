@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useUser } from '@/components/providers/user-provider'
 import { getUserBudget } from '@/app/actions/budget'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -22,12 +22,81 @@ const COLORS = [
     '#6366f1', // indigo-500
 ]
 
-export function BudgetChart({ refreshKey }: { refreshKey?: number }) {
+interface BudgetChartProps {
+    refreshKey?: number
+    compact?: boolean
+    chartOnly?: boolean
+    listOnly?: boolean
+    // Controlled state props
+    excludedItems?: string[]
+    onExcludedItemsChange?: (items: string[]) => void
+    viewMode?: 'category' | 'expense'
+    onViewModeChange?: (mode: 'category' | 'expense') => void
+    activeCategory?: string | null
+    onActiveCategoryChange?: (category: string | null) => void
+    className?: string
+    flexList?: boolean
+}
+
+export function BudgetChart({
+    refreshKey,
+    compact = false,
+    chartOnly = false,
+    listOnly = false,
+    excludedItems: controlledExcludedItems,
+    onExcludedItemsChange,
+    viewMode: controlledViewMode,
+    onViewModeChange,
+    activeCategory: controlledActiveCategory,
+    onActiveCategoryChange,
+    className,
+    flexList = false
+}: BudgetChartProps) {
     const { user } = useUser()
     const [expenses, setExpenses] = useState<Expense[]>([])
-    const [activeCategory, setActiveCategory] = useState<string | null>(null)
-    const [excludedItems, setExcludedItems] = useState<string[]>([])
-    const [viewMode, setViewMode] = useState<'category' | 'expense'>('category')
+
+    // Internal state (fallback if not controlled)
+    const [internalActiveCategory, setInternalActiveCategory] = useState<string | null>(null)
+    const [internalExcludedItems, setInternalExcludedItems] = useState<string[]>([])
+    const [internalViewMode, setInternalViewMode] = useState<'category' | 'expense'>('category')
+
+    // Use controlled or internal state
+    const activeCategory = controlledActiveCategory !== undefined ? controlledActiveCategory : internalActiveCategory
+    const setActiveCategory = onActiveCategoryChange || setInternalActiveCategory
+
+    const excludedItems = controlledExcludedItems !== undefined ? controlledExcludedItems : internalExcludedItems
+    const setExcludedItems = (items: string[] | ((prev: string[]) => string[])) => {
+        if (onExcludedItemsChange) {
+            // If controlled, we need to handle the functional update logic ourselves if passed a function
+            // But for simplicity in the parent, let's assume we pass the new array.
+            // However, the existing code uses functional updates.
+            // Let's handle it:
+            if (typeof items === 'function') {
+                // We can't easily support functional updates with just the callback unless we have the current value
+                // But we do have 'excludedItems' (the current value).
+                const newValue = items(excludedItems)
+                onExcludedItemsChange(newValue)
+            } else {
+                onExcludedItemsChange(items)
+            }
+        } else {
+            setInternalExcludedItems(items)
+        }
+    }
+
+    const viewMode = controlledViewMode !== undefined ? controlledViewMode : internalViewMode
+    const setViewMode = (mode: 'category' | 'expense' | ((prev: 'category' | 'expense') => 'category' | 'expense')) => {
+        if (onViewModeChange) {
+            if (typeof mode === 'function') {
+                const newValue = mode(viewMode)
+                onViewModeChange(newValue)
+            } else {
+                onViewModeChange(mode)
+            }
+        } else {
+            setInternalViewMode(mode)
+        }
+    }
 
     useEffect(() => {
         if (user) {
@@ -195,14 +264,243 @@ export function BudgetChart({ refreshKey }: { refreshKey?: number }) {
         </Card>
     )
 
+    // Long press logic
+    const longPressTimer = useRef<NodeJS.Timeout | null>(null)
+    const isLongPressing = useRef(false)
+
+    const handleTouchStart = (itemName: string) => {
+        isLongPressing.current = false
+        longPressTimer.current = setTimeout(() => {
+            isLongPressing.current = true
+            setActiveCategory(itemName)
+        }, 300) // 300ms for long press
+    }
+
+    const handleTouchEnd = () => {
+        if (longPressTimer.current) clearTimeout(longPressTimer.current)
+        if (isLongPressing.current) {
+            setActiveCategory(null)
+            isLongPressing.current = false
+        }
+    }
+
+    const handleTouchMove = () => {
+        if (longPressTimer.current) clearTimeout(longPressTimer.current)
+        if (isLongPressing.current) {
+            setActiveCategory(null)
+            isLongPressing.current = false
+        }
+    }
+
+    // Render only the category breakdown list
+    if (listOnly) {
+        return (
+            <div className="w-full space-y-2 pt-2">
+                {fullBreakdownData.map((item, index) => {
+                    const key = viewMode === 'category' ? item.name : item.id
+                    const isExcluded = excludedItems.includes(key)
+                    const percentage = (item.value / (user.income || totalSpent)) * 100
+                    const isHovered = activeCategory === item.name
+                    const color = item.isUnallocated ? '#e2e8f0' : (item.isOverBudget ? '#ef4444' : (item.type === 'expense' ? categoryColorMap[item.category] : categoryColorMap[item.name]))
+
+                    return (
+                        <div
+                            key={item.id || item.name}
+                            className={cn(
+                                "group flex flex-col gap-1 p-2 rounded-lg transition-colors cursor-pointer select-none", // Added select-none
+                                isHovered ? "bg-accent" : "hover:bg-accent/50",
+                                isExcluded && "opacity-50 grayscale",
+                                item.isOverBudget && "bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/30"
+                            )}
+                            onMouseEnter={() => !item.isOverBudget && setActiveCategory(item.name)}
+                            onMouseLeave={() => setActiveCategory(null)}
+                            onClick={() => {
+                                if (!isLongPressing.current && !item.isOverBudget) {
+                                    toggleItem(item)
+                                }
+                            }}
+                            // Touch events for long press
+                            onTouchStart={() => !item.isOverBudget && handleTouchStart(item.name)}
+                            onTouchEnd={handleTouchEnd}
+                            onTouchMove={handleTouchMove}
+                        >
+                            <div className="flex justify-between items-center text-sm">
+                                <div className="flex items-center gap-2">
+                                    <div
+                                        className="w-3 h-3 rounded-full"
+                                        style={{ backgroundColor: color }}
+                                    />
+                                    <span className={cn("font-medium truncate max-w-[150px]", item.isOverBudget && "text-red-600 dark:text-red-400")} title={item.name}>{item.name}</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    {!item.isOverBudget && (
+                                        <span className="text-muted-foreground">
+                                            {percentage.toFixed(1)}%
+                                        </span>
+                                    )}
+                                    <span className={cn("font-bold w-20 text-right", item.isOverBudget && "text-red-600 dark:text-red-400")}>
+                                        {new Intl.NumberFormat('en-US', {
+                                            style: 'currency',
+                                            currency: user.currency
+                                        }).format(item.value)}
+                                    </span>
+                                </div>
+                            </div>
+                            {!item.isOverBudget && (
+                                <Progress
+                                    value={percentage}
+                                    className="h-1.5"
+                                    indicatorColor={color}
+                                />
+                            )}
+                        </div>
+                    )
+                })}
+            </div>
+        )
+    }
+
+    // Render only the pie chart
+    if (chartOnly) {
+        return (
+            <Card className={cn("flex flex-col h-full", compact ? "border-0 shadow-none" : "")}>
+                <CardHeader className={cn("flex flex-row items-center justify-between", compact ? "pb-1 px-0 pt-0" : "pb-2")}>
+                    <div className="space-y-1">
+                        <CardTitle className={compact ? "text-base" : ""}>Spending Breakdown</CardTitle>
+                        {!compact && (
+                            <CardDescription>
+                                Interactive view of your monthly expenses
+                            </CardDescription>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                                setViewMode(prev => prev === 'category' ? 'expense' : 'category')
+                                setExcludedItems([])
+                            }}
+                            title={viewMode === 'category' ? "Show Expenses" : "Show Categories"}
+                        >
+                            {viewMode === 'category' ? <Banknote className="h-4 w-4" /> : <PieChartIcon className="h-4 w-4" />}
+                        </Button>
+                        {excludedItems.length > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                onClick={() => setExcludedItems([])}
+                                title="Reset Exclusions"
+                            >
+                                <RotateCcw className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent className={cn("flex-1 flex flex-col items-center justify-center", compact ? "p-2" : "p-6")}>
+                    {/* Donut Chart Section */}
+                    <div className="relative w-full max-w-[280px] aspect-square">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={chartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius="60%"
+                                    outerRadius="85%"
+                                    paddingAngle={2}
+                                    dataKey="value"
+                                    startAngle={90}
+                                    endAngle={-270}
+                                    onMouseLeave={() => setActiveCategory(null)}
+                                    stroke="none"
+                                >
+                                    {chartData.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.isUnallocated ? '#e2e8f0' : (entry.type === 'expense' ? categoryColorMap[entry.category] : categoryColorMap[entry.name])}
+                                            className={cn(
+                                                "transition-all duration-300 cursor-pointer",
+                                                activeCategory === entry.name ? "opacity-100 stroke-4" : "opacity-80 hover:opacity-100"
+                                            )}
+                                            stroke={activeCategory === entry.name ? "hsl(var(--background))" : "none"}
+                                            onClick={() => toggleItem(entry)}
+                                            onMouseEnter={() => setActiveCategory(entry.name)}
+                                        />
+                                    ))}
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+
+                        {/* Center Text */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            {activeItem ? (
+                                <>
+                                    <span className="text-sm text-muted-foreground font-medium">
+                                        {activeItem.name}
+                                    </span>
+                                    <span className="text-2xl font-bold">
+                                        {new Intl.NumberFormat('en-US', {
+                                            style: 'currency',
+                                            currency: user.currency,
+                                            maximumFractionDigits: 0
+                                        }).format(activeItem.value)}
+                                    </span>
+                                </>
+                            ) : isOverBudget ? (
+                                <>
+                                    <span className="text-sm font-medium text-red-500">
+                                        Over Budget
+                                    </span>
+                                    <span className="text-2xl font-bold text-red-500">
+                                        {new Intl.NumberFormat('en-US', {
+                                            style: 'currency',
+                                            currency: user.currency,
+                                            maximumFractionDigits: 0
+                                        }).format(totalSpent)}
+                                    </span>
+                                    <span className="text-xs text-red-400/80">
+                                        by {new Intl.NumberFormat('en-US', {
+                                            style: 'currency',
+                                            currency: user.currency,
+                                            maximumFractionDigits: 0
+                                        }).format(totalSpent - user.income)}
+                                    </span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-sm text-muted-foreground font-medium">
+                                        {excludedItems.length > 0 ? 'Total Estimated Spend' : 'Total Spent'}
+                                    </span>
+                                    <span className="text-2xl font-bold">
+                                        {new Intl.NumberFormat('en-US', {
+                                            style: 'currency',
+                                            currency: user.currency,
+                                            maximumFractionDigits: 0
+                                        }).format(totalSpent)}
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    // Render full component (chart + list)
     return (
-        <Card className="flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className={cn("flex flex-col", compact ? "border-0 shadow-none" : "", className)}>
+            <CardHeader className={cn("flex flex-row items-center justify-between", compact ? "pb-1 px-0 pt-0" : "pb-2")}>
                 <div className="space-y-1">
-                    <CardTitle>Spending Breakdown</CardTitle>
-                    <CardDescription>
-                        Interactive view of your monthly expenses
-                    </CardDescription>
+                    <CardTitle className={compact ? "text-base" : ""}>Spending Breakdown</CardTitle>
+                    {!compact && (
+                        <CardDescription>
+                            Interactive view of your monthly expenses
+                        </CardDescription>
+                    )}
                 </div>
                 <div className="flex items-center gap-1">
                     <Button
@@ -230,7 +528,7 @@ export function BudgetChart({ refreshKey }: { refreshKey?: number }) {
                     )}
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col gap-8 items-center justify-center p-6">
+            <CardContent className={cn("flex-1 flex flex-col gap-8 items-center justify-center min-h-0", compact ? "p-2 gap-4" : "p-6")}>
 
                 {/* Donut Chart Section */}
                 <div className="relative w-[250px] h-[250px] flex-shrink-0">
@@ -324,7 +622,10 @@ export function BudgetChart({ refreshKey }: { refreshKey?: number }) {
                 </div>
 
                 {/* Breakdown List Section */}
-                <div className="flex-1 w-full space-y-4 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
+                <div className={cn(
+                    "flex-1 w-full space-y-4 overflow-y-auto pr-2 custom-scrollbar",
+                    flexList ? "min-h-0" : "max-h-[350px]"
+                )}>
                     {fullBreakdownData.map((item, index) => {
                         const key = viewMode === 'category' ? item.name : item.id
                         const isExcluded = excludedItems.includes(key)
@@ -336,14 +637,22 @@ export function BudgetChart({ refreshKey }: { refreshKey?: number }) {
                             <div
                                 key={item.id || item.name}
                                 className={cn(
-                                    "group flex flex-col gap-1 p-2 rounded-lg transition-colors cursor-pointer",
+                                    "group flex flex-col gap-1 p-2 rounded-lg transition-colors cursor-pointer select-none", // Added select-none
                                     isHovered ? "bg-accent" : "hover:bg-accent/50",
                                     isExcluded && "opacity-50 grayscale",
                                     item.isOverBudget && "bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/30"
                                 )}
                                 onMouseEnter={() => !item.isOverBudget && setActiveCategory(item.name)}
                                 onMouseLeave={() => setActiveCategory(null)}
-                                onClick={() => !item.isOverBudget && toggleItem(item)}
+                                onClick={() => {
+                                    if (!isLongPressing.current && !item.isOverBudget) {
+                                        toggleItem(item)
+                                    }
+                                }}
+                                // Touch events for long press
+                                onTouchStart={() => !item.isOverBudget && handleTouchStart(item.name)}
+                                onTouchEnd={handleTouchEnd}
+                                onTouchMove={handleTouchMove}
                             >
                                 <div className="flex justify-between items-center text-sm">
                                     <div className="flex items-center gap-2">

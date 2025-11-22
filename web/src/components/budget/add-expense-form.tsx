@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useUser } from '@/components/providers/user-provider'
-import { Expense } from '@prisma/client'
-import { createExpense, getUserBudget } from '@/app/actions/budget'
+
+import { createExpense } from '@/app/actions/budget'
 import { createCategory, deleteCategory, getCategories } from '@/app/actions/categories'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,15 +35,16 @@ import { defaultCategories } from "@/lib/categories"
 
 interface AddExpenseFormProps {
     onExpenseAdded: () => void
+    variant?: 'default' | 'mobile'
 }
 
 type CategoryItem = {
     name: string
     id?: string
-    type: 'default' | 'custom' | 'historical'
+    type: 'default' | 'custom'
 }
 
-export function AddExpenseForm({ onExpenseAdded }: AddExpenseFormProps) {
+export function AddExpenseForm({ onExpenseAdded, variant = 'default' }: AddExpenseFormProps) {
     const { user } = useUser()
     const [name, setName] = useState('')
     const [amount, setAmount] = useState('')
@@ -78,17 +79,6 @@ export function AddExpenseForm({ onExpenseAdded }: AddExpenseFormProps) {
             })
         }
 
-        // 3. Fetch used categories from expenses to catch any historical ones
-        const budgetRes = await getUserBudget(user.id)
-        if (budgetRes.success && budgetRes.data) {
-            const usedNames = new Set(budgetRes.data.expenses.map((e: Expense) => e.category))
-            usedNames.forEach(name => {
-                if (!items.some(i => i.name === name)) {
-                    items.push({ name, type: 'historical' })
-                }
-            })
-        }
-
         // Sort alphabetically
         items.sort((a, b) => a.name.localeCompare(b.name))
         setCategories(items)
@@ -106,7 +96,6 @@ export function AddExpenseForm({ onExpenseAdded }: AddExpenseFormProps) {
             setAmount('')
             setCategory('')
             onExpenseAdded()
-            // Reload categories in case a new one was added (though we handle that separately now)
             loadData()
         }
         setIsLoading(false)
@@ -139,6 +128,159 @@ export function AddExpenseForm({ onExpenseAdded }: AddExpenseFormProps) {
             }
             loadData()
         }
+    }
+
+    // Long press logic
+    const longPressTimer = useRef<NodeJS.Timeout | null>(null)
+    const isLongPressing = useRef(false)
+
+    function handleTouchStart(categoryItem: CategoryItem) {
+        if (categoryItem.type !== 'custom' || !categoryItem.id) return
+
+        isLongPressing.current = false
+        longPressTimer.current = setTimeout(() => {
+            isLongPressing.current = true
+            if (confirm(`Delete category "${categoryItem.name}"?`)) {
+                // We can't pass the event here easily, so we just call the logic directly
+                deleteCategory(categoryItem.id!).then(res => {
+                    if (res.success) {
+                        if (category === categoryItem.name) {
+                            setCategory('')
+                        }
+                        loadData()
+                    }
+                })
+            }
+        }, 600) // 600ms long press
+    }
+
+    function handleTouchEnd() {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current)
+            longPressTimer.current = null
+        }
+    }
+
+    function handleTouchMove() {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current)
+            longPressTimer.current = null
+        }
+    }
+
+    if (variant === 'mobile') {
+        return (
+            <div className="flex flex-col h-full">
+                <form onSubmit={handleSubmit} className="flex flex-col h-full gap-2">
+                    {/* Large Amount Input */}
+                    <div className="flex justify-center py-4 shrink-0">
+                        <div className="relative inline-block">
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 text-3xl font-bold text-muted-foreground -ml-5">$</span>
+                            <Input
+                                type="number"
+                                placeholder="0.00"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                className="text-4xl font-bold text-center h-auto border-none bg-transparent focus-visible:ring-0 p-0 w-40 placeholder:text-muted-foreground/20"
+                                required
+                                step="0.01"
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+
+                    {/* Name Input */}
+                    <div className="shrink-0">
+                        <Input
+                            placeholder="What is this for? (e.g. Dinner)"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            required
+                            className="bg-muted/50 border-0 h-10 text-base"
+                        />
+                    </div>
+
+                    {/* Category Selection - Horizontal Pills */}
+                    <div className="space-y-1 flex-1 min-h-0 flex flex-col">
+                        <div className="flex justify-between items-center ml-1 shrink-0">
+                            <label className="text-xs font-medium text-muted-foreground">Category</label>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-xs text-primary px-2"
+                                onClick={() => setIsDialogOpen(true)}
+                            >
+                                <Plus className="h-3 w-3 mr-1" /> New
+                            </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2 overflow-y-auto p-1 content-start">
+                            {categories.map((c) => (
+                                <button
+                                    key={c.name}
+                                    type="button"
+                                    onClick={() => {
+                                        if (!isLongPressing.current) {
+                                            setCategory(c.name)
+                                        }
+                                    }}
+                                    onTouchStart={() => handleTouchStart(c)}
+                                    onTouchEnd={handleTouchEnd}
+                                    onTouchMove={handleTouchMove}
+                                    // Mouse events for desktop testing of long press (optional, but helpful)
+                                    onMouseDown={() => handleTouchStart(c)}
+                                    onMouseUp={handleTouchEnd}
+                                    onMouseLeave={handleTouchEnd}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-full text-xs font-medium transition-all border shrink-0 select-none",
+                                        category === c.name
+                                            ? "bg-primary text-primary-foreground border-primary shadow-md scale-105"
+                                            : "bg-background hover:bg-muted border-border text-foreground"
+                                    )}
+                                >
+                                    {c.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <Button type="submit" disabled={isLoading} size="lg" className="w-full mt-2 text-base h-11 rounded-xl shrink-0">
+                        {isLoading ? "Adding..." : "Add Expense"}
+                    </Button>
+                </form>
+
+                {/* Create Category Dialog (Mobile Optimized) */}
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogContent className="top-[20%] translate-y-0 sm:top-[50%] sm:-translate-y-1/2 gap-2">
+                        <DialogHeader className="space-y-1">
+                            <DialogTitle>New Category</DialogTitle>
+                            <DialogDescription className="text-xs">
+                                Create a custom category.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-2">
+                            <Input
+                                placeholder="Category Name"
+                                value={newCategoryName}
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleCreateCategory()
+                                    }
+                                }}
+                                className="h-10"
+                            />
+                        </div>
+                        <DialogFooter className="flex-row gap-2 sm:justify-end">
+                            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1 sm:flex-none h-9">Cancel</Button>
+                            <Button onClick={handleCreateCategory} disabled={!newCategoryName.trim() || isCreatingCategory} className="flex-1 sm:flex-none h-9">
+                                {isCreatingCategory ? 'Creating...' : 'Create'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        )
     }
 
     return (

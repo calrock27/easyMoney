@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useUser } from '@/components/providers/user-provider'
 import { getUserBudget, deleteExpense } from '@/app/actions/budget'
 import { AddExpenseForm } from './add-expense-form'
@@ -12,7 +12,8 @@ import {
     Search,
     Filter,
     ArrowUpDown,
-    Check
+    Check,
+    Plus
 } from 'lucide-react'
 import {
     DropdownMenu,
@@ -25,25 +26,75 @@ import {
     DropdownMenuRadioGroup,
     DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
 import { Expense } from '@prisma/client'
+import { cn } from '@/lib/utils'
 
 interface ExpenseListProps {
     onExpenseChange?: () => void
+    className?: string
+    compact?: boolean
+    searchQuery?: string
+    scrollable?: boolean
 }
 
 type SortKey = 'name' | 'amount' | 'category'
 type SortOrder = 'asc' | 'desc'
 
-export function ExpenseList({ onExpenseChange }: ExpenseListProps) {
+export function ExpenseList({ onExpenseChange, className, compact = false, searchQuery, scrollable = false }: ExpenseListProps) {
     const { user } = useUser()
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
     // Sort & Filter State
-    const [searchQuery, setSearchQuery] = useState('')
+    const [localSearchQuery, setLocalSearchQuery] = useState('')
     const [filterCategory, setFilterCategory] = useState<string>('all')
     const [sortKey, setSortKey] = useState<SortKey>('name')
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+
+    // Swipe to Delete Logic (Mobile Only)
+    const [deleteModeId, setDeleteModeId] = useState<string | null>(null)
+    const touchStartX = useRef(0)
+    const touchCurrentX = useRef(0)
+
+    function handleTrashClick(id: string) {
+        if (compact) {
+            // Mobile: Toggle delete mode
+            setDeleteModeId(deleteModeId === id ? null : id)
+        } else {
+            // Desktop: Immediate delete
+            handleDelete(id)
+        }
+    }
+
+    function handleTouchStart(e: React.TouchEvent, id: string) {
+        if (deleteModeId !== id) return
+        touchStartX.current = e.touches[0].clientX
+        touchCurrentX.current = e.touches[0].clientX
+    }
+
+    function handleTouchMove(e: React.TouchEvent, id: string) {
+        if (deleteModeId !== id) return
+        touchCurrentX.current = e.touches[0].clientX
+    }
+
+    function handleTouchEnd(id: string) {
+        if (deleteModeId !== id) return
+
+        const diff = touchStartX.current - touchCurrentX.current
+        // If swiped left significantly (> 50px)
+        if (diff > 50) {
+            handleDelete(id)
+            setDeleteModeId(null)
+        }
+    }
 
     useEffect(() => {
         if (user) {
@@ -71,6 +122,7 @@ export function ExpenseList({ onExpenseChange }: ExpenseListProps) {
     function handleExpenseAdded() {
         loadExpenses()
         onExpenseChange?.()
+        setIsAddDialogOpen(false)
     }
 
     const uniqueCategories = useMemo(() => {
@@ -86,9 +138,10 @@ export function ExpenseList({ onExpenseChange }: ExpenseListProps) {
             result = result.filter(e => e.category === filterCategory)
         }
 
-        // 2. Filter by Search
-        if (searchQuery) {
-            const lowerQuery = searchQuery.toLowerCase()
+        // 2. Filter by Search (using prop if provided, else local)
+        const query = searchQuery !== undefined ? searchQuery : localSearchQuery
+        if (query) {
+            const lowerQuery = query.toLowerCase()
             result = result.filter(e =>
                 e.name.toLowerCase().includes(lowerQuery) ||
                 e.category.toLowerCase().includes(lowerQuery)
@@ -97,128 +150,198 @@ export function ExpenseList({ onExpenseChange }: ExpenseListProps) {
 
         // 3. Sort
         result.sort((a, b) => {
-            let cmp = 0
-            if (sortKey === 'amount') {
-                cmp = a.amount - b.amount
-            } else {
-                cmp = a[sortKey].localeCompare(b[sortKey])
+            let comparison = 0
+            if (sortKey === 'name') {
+                comparison = a.name.localeCompare(b.name)
+            } else if (sortKey === 'amount') {
+                comparison = a.amount - b.amount
+            } else if (sortKey === 'category') {
+                comparison = a.category.localeCompare(b.category)
             }
-            return sortOrder === 'asc' ? cmp : -cmp
+            return sortOrder === 'asc' ? comparison : -comparison
         })
 
         return result
-    }, [expenses, filterCategory, searchQuery, sortKey, sortOrder])
+    }, [expenses, filterCategory, searchQuery, localSearchQuery, sortKey, sortOrder])
 
-    const totalExpenses = expenses.reduce((acc, curr) => acc + curr.amount, 0)
+    const handleSort = (key: SortKey) => {
+        if (sortKey === key) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+        } else {
+            setSortKey(key)
+            setSortOrder('asc')
+        }
+    }
+
+    if (isLoading) {
+        return <div className="p-8 text-center">Loading expenses...</div>
+    }
 
     if (!user) return null
 
     return (
-        <Card className="col-span-2">
-            <CardHeader>
-                <CardTitle className="flex justify-between items-center">
-                    <span>Monthly Expenses</span>
-                    <span className="text-muted-foreground font-normal text-base">
-                        Total: {new Intl.NumberFormat('en-US', { style: 'currency', currency: user.currency }).format(totalExpenses)}
-                    </span>
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <AddExpenseForm onExpenseAdded={handleExpenseAdded} />
-
-                <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search expenses..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-8"
-                        />
-                    </div>
-
-                    {/* Filter Dropdown */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="icon" className={filterCategory !== 'all' ? "bg-accent text-accent-foreground" : ""}>
-                                <Filter className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel>Filter by Category</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuRadioGroup value={filterCategory} onValueChange={setFilterCategory}>
-                                <DropdownMenuRadioItem value="all">All Categories</DropdownMenuRadioItem>
-                                {uniqueCategories.map(cat => (
-                                    <DropdownMenuRadioItem key={cat} value={cat}>
-                                        {cat}
-                                    </DropdownMenuRadioItem>
-                                ))}
-                            </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Sort Dropdown */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="icon">
-                                <ArrowUpDown className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuRadioGroup value={sortKey} onValueChange={(val) => setSortKey(val as SortKey)}>
-                                <DropdownMenuRadioItem value="name">Name</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="amount">Amount</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="category">Category</DropdownMenuRadioItem>
-                            </DropdownMenuRadioGroup>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuRadioGroup value={sortOrder} onValueChange={(val) => setSortOrder(val as SortOrder)}>
-                                <DropdownMenuRadioItem value="asc">Ascending</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="desc">Descending</DropdownMenuRadioItem>
-                            </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+        <div className={cn("space-y-4 pb-20 md:pb-0", scrollable ? "flex flex-col h-full space-y-0 gap-4" : "", className)}>
+            {/* Header Section (Add Form + Filters) */}
+            <div className={cn("space-y-4", scrollable ? "flex-shrink-0" : "")}>
+                {/* Desktop: Inline Add Form */}
+                <div className="hidden md:block">
+                    <AddExpenseForm onExpenseAdded={handleExpenseAdded} />
                 </div>
 
-                <div className="space-y-2">
-                    {filteredExpenses.map((expense) => (
-                        <div
-                            key={expense.id}
-                            className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors group"
-                        >
-                            <div className="flex flex-col">
-                                <span className="font-medium">{expense.name}</span>
-                                <span className="text-xs text-muted-foreground">{expense.category}</span>
+                {/* Mobile: FAB Add Button */}
+                <div className="md:hidden fixed bottom-20 right-4 z-50">
+                    <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90">
+                                <Plus className="h-6 w-6" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px] h-[80vh] sm:h-auto flex flex-col">
+                            <DialogHeader>
+                                <DialogTitle>Add New Expense</DialogTitle>
+                            </DialogHeader>
+                            <div className="flex-1 pt-4 overflow-y-auto">
+                                <AddExpenseForm onExpenseAdded={handleExpenseAdded} variant="mobile" />
                             </div>
-                            <div className="flex items-center gap-4">
-                                <span className="font-bold">
-                                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: user.currency }).format(expense.amount)}
-                                </span>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+
+                {/* Filters & Search */}
+                <div className="flex flex-col md:flex-row gap-4">
+                    {/* Only show local search input if searchQuery prop is NOT provided */}
+                    {searchQuery === undefined && (
+                        <div className="relative flex-1">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search expenses..."
+                                value={localSearchQuery}
+                                onChange={(e) => setLocalSearchQuery(e.target.value)}
+                                className="pl-8"
+                            />
+                        </div>
+                    )}
+
+                    <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-10">
+                                    <Filter className="mr-2 h-4 w-4" />
+                                    Filter
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Filter by Category</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuRadioGroup value={filterCategory} onValueChange={setFilterCategory}>
+                                    <DropdownMenuRadioItem value="all">All Categories</DropdownMenuRadioItem>
+                                    {uniqueCategories.map(cat => (
+                                        <DropdownMenuRadioItem key={cat} value={cat}>
+                                            {cat}
+                                        </DropdownMenuRadioItem>
+                                    ))}
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-10">
+                                    <ArrowUpDown className="mr-2 h-4 w-4" />
+                                    Sort
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuRadioGroup value={sortKey} onValueChange={(v) => handleSort(v as SortKey)}>
+                                    <DropdownMenuRadioItem value="name">Name</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="amount">Amount</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="category">Category</DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuRadioGroup value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
+                                    <DropdownMenuRadioItem value="asc">Ascending</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem value="desc">Descending</DropdownMenuRadioItem>
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </div>
+            </div>
+
+            {/* Expense List */}
+            <div className={cn(
+                "flex flex-col gap-4",
+                scrollable ? "flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-2" : ""
+            )}>
+                {filteredExpenses.length === 0 ? (
+                    <div className="text-center p-8 text-muted-foreground border rounded-lg border-dashed">
+                        No expenses found
+                    </div>
+                ) : (
+                    filteredExpenses.map((expense) => (
+                        <Card
+                            key={expense.id}
+                            className={cn(
+                                "overflow-hidden transition-all relative flex-shrink-0", // Added flex-shrink-0
+                                deleteModeId === expense.id ? "bg-destructive text-destructive-foreground" : ""
+                            )}
+                            onTouchStart={(e) => handleTouchStart(e, expense.id)}
+                            onTouchMove={(e) => handleTouchMove(e, expense.id)}
+                            onTouchEnd={() => handleTouchEnd(expense.id)}
+                            onClick={() => setDeleteModeId(null)}
+                        >
+                            {/* Swipe Instruction Overlay */}
+                            {deleteModeId === expense.id && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                                    <span className="text-destructive-foreground text-lg font-bold animate-pulse flex items-center">
+                                        Swipe left to delete <Trash2 className="ml-2 h-5 w-5" />
+                                    </span>
+                                </div>
+                            )}
+
+                            <CardContent className={cn(
+                                "p-4 flex items-center justify-between relative z-10 transition-opacity",
+                                deleteModeId === expense.id ? "opacity-10" : "opacity-100"
+                            )}>
+                                <div className="flex-1 min-w-0 mr-4">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <h3 className="font-medium truncate">{expense.name}</h3>
+                                        <span className={cn(
+                                            "font-bold whitespace-nowrap ml-2",
+                                            deleteModeId === expense.id ? "text-destructive-foreground" : "text-destructive"
+                                        )}>
+                                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: user.currency }).format(expense.amount)}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                        <span className="truncate bg-muted px-2 py-0.5 rounded-full">
+                                            {expense.category}
+                                        </span>
+                                    </div>
+                                </div>
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive"
-                                    onClick={() => handleDelete(expense.id)}
+                                    className={cn(
+                                        "h-8 w-8 flex-shrink-0 transition-colors",
+                                        deleteModeId === expense.id
+                                            ? "text-destructive-foreground hover:bg-white/20"
+                                            : "text-muted-foreground hover:text-destructive"
+                                    )}
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleTrashClick(expense.id)
+                                    }}
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
-                            </div>
-                        </div>
-                    ))}
-                    {expenses.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                            No expenses added yet. Add your fixed monthly bills above.
-                        </div>
-                    )}
-                    {expenses.length > 0 && filteredExpenses.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                            No expenses match your search/filter.
-                        </div>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
+                            </CardContent>
+                        </Card>
+                    ))
+                )}
+            </div>
+        </div >
     )
 }

@@ -11,7 +11,8 @@ const ImportSchema = z.object({
         name: z.string(),
         amount: z.number(),
         category: z.string()
-    }))
+    })),
+    categories: z.array(z.string()).optional()
 })
 
 export async function updateCurrency(userId: string, currency: string) {
@@ -48,11 +49,26 @@ export async function importData(userId: string, jsonData: string) {
                 where: { userId }
             })
 
+            // Delete existing custom categories
+            await tx.category.deleteMany({
+                where: { userId }
+            })
+
             // Create new expenses
             if (parsed.expenses.length > 0) {
                 await tx.expense.createMany({
                     data: parsed.expenses.map(e => ({
                         ...e,
+                        userId
+                    }))
+                })
+            }
+
+            // Create new custom categories
+            if (parsed.categories && parsed.categories.length > 0) {
+                await tx.category.createMany({
+                    data: parsed.categories.map(name => ({
+                        name,
                         userId
                     }))
                 })
@@ -64,5 +80,32 @@ export async function importData(userId: string, jsonData: string) {
     } catch (error) {
         console.error('Import error:', error)
         return { success: false, error: 'Failed to import data. Invalid format.' }
+    }
+}
+
+export async function clearData(userId: string) {
+    try {
+        await prisma.$transaction(async (tx) => {
+            // Delete all expenses
+            await tx.expense.deleteMany({
+                where: { userId }
+            })
+
+            // Delete all custom categories
+            await tx.category.deleteMany({
+                where: { userId }
+            })
+
+            // Reset income to 0
+            await tx.user.update({
+                where: { id: userId },
+                data: { income: 0 }
+            })
+        })
+
+        revalidatePath('/')
+        return { success: true }
+    } catch (error) {
+        return { success: false, error: 'Failed to clear data' }
     }
 }

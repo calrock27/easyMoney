@@ -59,12 +59,18 @@ export default function PrintPage() {
             {/* No-print controls */}
             <div className="mb-8 flex gap-4 print:hidden">
                 <Link href="/">
-                    <Button variant="outline">
+                    <Button
+                        variant="outline"
+                        className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                    >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Dashboard
                     </Button>
                 </Link>
-                <Button onClick={() => window.print()}>
+                <Button
+                    onClick={() => window.print()}
+                    className="bg-black text-white hover:bg-gray-800"
+                >
                     <Printer className="mr-2 h-4 w-4" />
                     Print Report
                 </Button>
