@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { User } from '@prisma/client'
 import { Plus, User as UserIcon, ArrowRight } from 'lucide-react'
+import { Logo } from '@/components/logo'
 
 export function UserSwitcher() {
     const { setUser } = useUser()
@@ -47,7 +48,8 @@ export function UserSwitcher() {
     }
 
     return (
-        <div className="flex min-h-screen items-start md:items-center justify-center bg-background p-4 pt-20 md:pt-4">
+        <div className="flex min-h-screen flex-col items-center justify-start md:justify-center bg-background p-4 pt-20 md:pt-4 gap-8">
+            <Logo size="lg" />
             <Card className="w-full max-w-md">
                 <CardHeader>
                     <CardTitle className="text-center text-2xl font-bold">

@@ -8,6 +8,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { SettingsDialog } from '@/components/settings-dialog'
 import { LogOut, Printer, Settings, Moon, Sun, Laptop, Search, X, Plus } from 'lucide-react'
 import { MountFuji } from '@/components/icons/mount-fuji'
+import { Logo } from '@/components/logo'
 import Link from 'next/link'
 import { useState } from 'react'
 import {
@@ -81,7 +82,10 @@ export function DashboardHeader({
                     </div>
                 ) : (
                     <>
-                        <h1 className="text-lg font-bold tracking-tight truncate">Welcome, {userName}</h1>
+                        <div className="flex items-center gap-2 overflow-hidden">
+                            <Logo variant="icon-only" size="sm" className="flex-shrink-0" />
+                            <h1 className="text-lg font-bold tracking-tight truncate">Welcome, {userName}</h1>
+                        </div>
 
                         <div className="flex items-center gap-1">
                             {showAddButton && (
@@ -167,9 +171,13 @@ export function DashboardHeader({
 
     return (
         <div className="flex flex-shrink-0 justify-between items-center gap-4 mb-6">
-            <div>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Welcome back, {userName}</h1>
-                <p className="text-muted-foreground">Here's your budget</p>
+            <div className="flex items-center gap-4">
+                <Logo className="hidden md:flex" />
+                <div className="h-8 w-px bg-border hidden md:block" />
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Welcome back, {userName}</h1>
+                    <p className="text-muted-foreground">Here's your budget</p>
+                </div>
             </div>
 
             {/* Desktop Actions */}
