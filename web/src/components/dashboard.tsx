@@ -10,6 +10,14 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Wallet } from 'lucide-react'
+import { MobileTutorial } from '@/components/mobile-tutorial'
+import { AddExpenseForm } from '@/components/budget/add-expense-form'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 
 export function Dashboard() {
     const { user } = useUser()
@@ -25,12 +33,12 @@ export function Dashboard() {
     const [searchQuery, setSearchQuery] = useState('')
     const [isSearchOpen, setIsSearchOpen] = useState(false)
     const [activeTab, setActiveTab] = useState('chart')
+    const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false)
 
     function handleTabChange(value: string) {
         setActiveTab(value)
         setIsSearchOpen(false)
     }
-
     // Ref for scroll passthrough
     const listRef = useRef<HTMLDivElement>(null)
     const touchStartY = useRef(0)
@@ -52,6 +60,12 @@ export function Dashboard() {
 
     function handleExpenseChange() {
         setRefreshKey(prev => prev + 1)
+    }
+
+    function handleExpenseAdded() {
+        handleExpenseChange()
+        setIsAddExpenseOpen(false)
+        loadTotalExpenses()
     }
 
     // Scroll Passthrough Handlers
@@ -79,6 +93,7 @@ export function Dashboard() {
 
     return (
         <div className="h-[100dvh] flex flex-col overflow-hidden bg-background">
+            <MobileTutorial userId={user.id} hasData={totalExpenses > 0} onComplete={() => { }} />
             <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full overflow-hidden">
                 {/* Desktop Header - Fixed at top */}
                 <div className="hidden md:block p-4 md:p-8 pb-0">
@@ -97,8 +112,21 @@ export function Dashboard() {
                             showSearch={activeTab === 'expenses'}
                             isSearchOpen={isSearchOpen}
                             onSearchOpenChange={setIsSearchOpen}
+                            showAddButton={activeTab !== 'expenses'}
+                            onAddClick={() => setIsAddExpenseOpen(true)}
                         />
                     </div>
+
+                    <Dialog open={isAddExpenseOpen} onOpenChange={setIsAddExpenseOpen}>
+                        <DialogContent className="sm:max-w-[425px] h-[80vh] sm:h-auto flex flex-col">
+                            <DialogHeader>
+                                <DialogTitle>Add New Expense</DialogTitle>
+                            </DialogHeader>
+                            <div className="flex-1 pt-4 overflow-y-auto">
+                                <AddExpenseForm onExpenseAdded={handleExpenseAdded} variant="mobile" />
+                            </div>
+                        </DialogContent>
+                    </Dialog>
 
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
                         {/* Tab Content - fills space between header and bottom tabs */}
@@ -183,6 +211,7 @@ export function Dashboard() {
                                     onExpenseChange={handleExpenseChange}
                                     searchQuery={searchQuery}
                                     compact
+                                    refreshKey={refreshKey}
                                 />
                             </TabsContent>
                         </div>
@@ -193,11 +222,11 @@ export function Dashboard() {
                             <TabsTrigger value="summary" className="h-full">Summary</TabsTrigger>
                             <TabsTrigger value="expenses" className="h-full">Expenses</TabsTrigger>
                         </TabsList>
-                    </Tabs>
-                </div>
+                    </Tabs >
+                </div >
 
                 {/* Desktop Grid View */}
-                <div className="hidden md:flex flex-1 flex-col overflow-hidden p-4 md:p-8 pt-4">
+                < div className="hidden md:flex flex-1 flex-col overflow-hidden p-4 md:p-8 pt-4" >
                     <div className="flex-shrink-0 grid gap-4 md:grid-cols-3 mb-4">
                         <IncomeInput />
 
@@ -238,6 +267,7 @@ export function Dashboard() {
                             onExpenseChange={handleExpenseChange}
                             className="flex-[2] h-full min-h-0"
                             scrollable
+                            refreshKey={refreshKey}
                         />
                         <div className="flex-1 h-full min-h-0">
                             <BudgetChart
@@ -247,8 +277,8 @@ export function Dashboard() {
                             />
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
+                </div >
+            </div >
+        </div >
     )
 }

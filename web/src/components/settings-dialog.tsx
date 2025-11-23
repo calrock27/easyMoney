@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { useUser } from '@/components/providers/user-provider'
 import { updateCurrency, importData, clearData } from '@/app/actions/settings'
+import { deleteUser } from '@/app/actions/user'
 import { getUserBudget } from '@/app/actions/budget'
 import { getCategories } from '@/app/actions/categories'
 import { Button } from '@/components/ui/button'
@@ -38,6 +39,7 @@ export function SettingsDialog({ trigger }: { trigger?: React.ReactNode }) {
     const [currency, setCurrency] = useState(user?.currency || 'USD')
     const [isLoading, setIsLoading] = useState(false)
     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false)
+    const [isDeleteAccountDialogOpen, setIsDeleteAccountDialogOpen] = useState(false)
     const [confirmUsername, setConfirmUsername] = useState('')
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -117,6 +119,23 @@ export function SettingsDialog({ trigger }: { trigger?: React.ReactNode }) {
             window.location.reload()
         } else {
             alert('Failed to clear data: ' + res.error)
+        }
+        setIsLoading(false)
+    }
+
+    async function handleDeleteAccount() {
+        if (confirmUsername.toLowerCase() !== user!.name.toLowerCase()) return
+
+        setIsLoading(true)
+        const res = await deleteUser(user!.id)
+        if (res.success) {
+            localStorage.removeItem('static_budget_user_id')
+            setIsDeleteAccountDialogOpen(false)
+            setConfirmUsername('')
+            setOpen(false)
+            window.location.reload()
+        } else {
+            alert('Failed to delete account: ' + res.error)
         }
         setIsLoading(false)
     }
@@ -216,17 +235,28 @@ export function SettingsDialog({ trigger }: { trigger?: React.ReactNode }) {
                     {/* Danger Zone */}
                     <div className="space-y-2">
                         <h3 className="text-sm font-medium text-destructive">Danger Zone</h3>
-                        <Button
-                            variant="destructive"
-                            className="w-full gap-2"
-                            onClick={() => setIsClearDialogOpen(true)}
-                            disabled={isLoading}
-                        >
-                            <Trash2 className="h-4 w-4" />
-                            Clear All Data
-                        </Button>
+                        <div className="grid gap-2">
+                            <Button
+                                variant="outline"
+                                className="w-full gap-2 text-destructive hover:text-destructive"
+                                onClick={() => setIsClearDialogOpen(true)}
+                                disabled={isLoading}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                Clear All Data
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                className="w-full gap-2"
+                                onClick={() => setIsDeleteAccountDialogOpen(true)}
+                                disabled={isLoading}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                Delete Account
+                            </Button>
+                        </div>
                         <p className="text-xs text-muted-foreground">
-                            Permanently delete all expenses, custom categories, and reset income.
+                            Clear data resets your budget. Delete account removes you completely.
                         </p>
                     </div>
 
@@ -236,9 +266,9 @@ export function SettingsDialog({ trigger }: { trigger?: React.ReactNode }) {
             <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Are you absolutely sure?</DialogTitle>
+                        <DialogTitle>Clear All Data?</DialogTitle>
                         <DialogDescription>
-                            This action cannot be undone. This will permanently delete your account data.
+                            This will permanently delete all expenses and reset your income. Your account will remain.
                             <br /><br />
                             Please type <span className="font-bold">{user.name}</span> to confirm.
                         </DialogDescription>
@@ -257,7 +287,37 @@ export function SettingsDialog({ trigger }: { trigger?: React.ReactNode }) {
                             onClick={handleClearData}
                             disabled={confirmUsername.toLowerCase() !== user.name.toLowerCase() || isLoading}
                         >
-                            {isLoading ? 'Deleting...' : 'Delete Everything'}
+                            {isLoading ? 'Clearing...' : 'Clear Data'}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDeleteAccountDialogOpen} onOpenChange={setIsDeleteAccountDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Account?</DialogTitle>
+                        <DialogDescription>
+                            This action cannot be undone. This will permanently delete your account and all associated data.
+                            <br /><br />
+                            Please type <span className="font-bold">{user.name}</span> to confirm.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <Input
+                            placeholder="Type your username"
+                            value={confirmUsername}
+                            onChange={(e) => setConfirmUsername(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setIsDeleteAccountDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteAccount}
+                            disabled={confirmUsername.toLowerCase() !== user.name.toLowerCase() || isLoading}
+                        >
+                            {isLoading ? 'Deleting...' : 'Delete Account'}
                         </Button>
                     </div>
                 </DialogContent>

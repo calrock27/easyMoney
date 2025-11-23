@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { SettingsDialog } from '@/components/settings-dialog'
-import { LogOut, Printer, Settings, Moon, Sun, Laptop, Search, X } from 'lucide-react'
+import { LogOut, Printer, Settings, Moon, Sun, Laptop, Search, X, Plus } from 'lucide-react'
 import { MountFuji } from '@/components/icons/mount-fuji'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -30,6 +30,8 @@ interface DashboardHeaderProps {
     showSearch?: boolean
     isSearchOpen?: boolean
     onSearchOpenChange?: (isOpen: boolean) => void
+    onAddClick?: () => void
+    showAddButton?: boolean
 }
 
 export function DashboardHeader({
@@ -39,7 +41,9 @@ export function DashboardHeader({
     onSearchChange,
     showSearch = true,
     isSearchOpen: controlledIsSearchOpen,
-    onSearchOpenChange
+    onSearchOpenChange,
+    onAddClick,
+    showAddButton = false
 }: DashboardHeaderProps) {
     const { setUser } = useUser()
     const { setTheme } = useTheme()
@@ -80,6 +84,17 @@ export function DashboardHeader({
                         <h1 className="text-lg font-bold tracking-tight truncate">Welcome, {userName}</h1>
 
                         <div className="flex items-center gap-1">
+                            {showAddButton && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="flex-shrink-0"
+                                    onClick={onAddClick}
+                                >
+                                    <Plus className="h-5 w-5" />
+                                </Button>
+                            )}
+
                             {showSearch && (
                                 <Button
                                     variant="ghost"

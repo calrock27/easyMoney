@@ -42,12 +42,13 @@ interface ExpenseListProps {
     compact?: boolean
     searchQuery?: string
     scrollable?: boolean
+    refreshKey?: number
 }
 
 type SortKey = 'name' | 'amount' | 'category'
 type SortOrder = 'asc' | 'desc'
 
-export function ExpenseList({ onExpenseChange, className, compact = false, searchQuery, scrollable = false }: ExpenseListProps) {
+export function ExpenseList({ onExpenseChange, className, compact = false, searchQuery, scrollable = false, refreshKey }: ExpenseListProps) {
     const { user } = useUser()
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -100,7 +101,7 @@ export function ExpenseList({ onExpenseChange, className, compact = false, searc
         if (user) {
             loadExpenses()
         }
-    }, [user])
+    }, [user, refreshKey])
 
     async function loadExpenses() {
         if (!user) return

@@ -47,7 +47,7 @@ export function UserSwitcher() {
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="flex min-h-screen items-start md:items-center justify-center bg-background p-4 pt-20 md:pt-4">
             <Card className="w-full max-w-md">
                 <CardHeader>
                     <CardTitle className="text-center text-2xl font-bold">

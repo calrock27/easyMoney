@@ -98,6 +98,10 @@ export function BudgetChart({
         }
     }
 
+    // Long press logic
+    const longPressTimer = useRef<NodeJS.Timeout | null>(null)
+    const isLongPressing = useRef(false)
+
     useEffect(() => {
         if (user) {
             loadData()
@@ -258,15 +262,17 @@ export function BudgetChart({
     const activeItem = activeCategory ? chartData.find(item => item.name === activeCategory) : null
     const isOverBudget = user && totalSpent > user.income
 
-    if (!user || (expenses.length === 0 && user.income === 0)) return (
-        <Card className="h-[400px] flex items-center justify-center text-muted-foreground">
-            No data to display
-        </Card>
-    )
+    if (!user || (expenses.length === 0 && user.income === 0)) {
+        let message = "Add expenses to see your breakdown! 📊"
+        if (listOnly) message = "Your categories will appear here"
+        if (chartOnly) message = "Add data to see your financial donut.. mmm 🍩"
 
-    // Long press logic
-    const longPressTimer = useRef<NodeJS.Timeout | null>(null)
-    const isLongPressing = useRef(false)
+        return (
+            <Card className={cn("h-full flex items-center justify-center text-muted-foreground p-4 text-center", className)}>
+                {message}
+            </Card>
+        )
+    }
 
     const handleTouchStart = (itemName: string) => {
         isLongPressing.current = false
