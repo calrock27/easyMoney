@@ -1,0 +1,39 @@
+name: Sync Demo Branch
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Apply Demo Overrides
+        run: |
+          echo "Applying demo overrides..."
+          cp -r web/demo-overrides/* web/
+          rm -rf web/demo-overrides
+          
+          # Verify a key file changed
+          if grep -q "@prisma/client" web/src/components/user-switcher.tsx; then
+            echo "Error: Overrides failed. @prisma/client still found in user-switcher.tsx"
+            exit 1
+          fi
+          echo "Overrides applied successfully."
+
+      - name: Setup Git
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+
+      - name: Commit and Push to Demo
+        run: |
+          git add .
+          git commit -m "chore: Sync demo branch with main [skip ci]"
+          git push -f origin HEAD:demo
