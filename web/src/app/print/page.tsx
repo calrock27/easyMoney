@@ -60,8 +60,8 @@ export default function PrintPage() {
             <div className="mb-8 flex gap-4 print:hidden">
                 <Link href="/">
                     <Button
-                        variant="outline"
-                        className="border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                        variant="ghost"
+                        className="bg-white border-2 border-gray-200 text-gray-900 hover:bg-gray-100 hover:text-black transition-colors"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Dashboard
@@ -69,7 +69,7 @@ export default function PrintPage() {
                 </Link>
                 <Button
                     onClick={() => window.print()}
-                    className="bg-black text-white hover:bg-gray-800"
+                    className="bg-black text-white hover:bg-gray-800 border-2 border-transparent transition-colors"
                 >
                     <Printer className="mr-2 h-4 w-4" />
                     Print Report
