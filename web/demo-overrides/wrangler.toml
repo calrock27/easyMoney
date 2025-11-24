@@ -1,5 +1,0 @@
-name = "easymoney-demo"
-compatibility_date = "2025-11-22"
-
-[site]
-bucket = "./web/out"
