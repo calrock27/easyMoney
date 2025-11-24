@@ -17,8 +17,12 @@ jobs:
       - name: Apply Demo Overrides
         run: |
           echo "Applying demo overrides..."
-          cp -r web/demo-overrides/* web/
+          ls -R web/demo-overrides
+          cp -rf web/demo-overrides/* web/
           rm -rf web/demo-overrides
+          
+          echo "Verifying storage.ts content:"
+          head -n 10 web/src/lib/storage.ts
           
           # Verify a key file changed
           if grep -q "@prisma/client" web/src/components/user-switcher.tsx; then
