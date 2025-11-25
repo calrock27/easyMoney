@@ -18,7 +18,10 @@ jobs:
           cd web
           echo "Applying demo overrides inside web/..."
           ls -R demo-overrides
-          cp -rf demo-overrides/. .
+          # Remove destination config to ensure overwrite
+          rm -f next.config.ts
+          # Use rsync for reliable directory merging
+          rsync -av demo-overrides/ .
           rm -rf demo-overrides
           # Explicitly remove from git index if it exists
           git rm -r --ignore-unmatch demo-overrides
