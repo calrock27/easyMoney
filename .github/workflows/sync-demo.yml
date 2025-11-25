@@ -63,5 +63,5 @@ jobs:
         run: |
           cd web
           git add .
-          git commit -m "chore: Sync demo branch with main [skip ci]" || echo "No changes to commit"
+          git commit -m "chore: Sync demo branch with main" || echo "No changes to commit"
           git push -f origin HEAD:demo
