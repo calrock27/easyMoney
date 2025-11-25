@@ -20,6 +20,8 @@ jobs:
           ls -R web/demo-overrides
           cp -rf web/demo-overrides/* web/
           rm -rf web/demo-overrides
+          # Explicitly remove from git index if it exists
+          git rm -r --ignore-unmatch web/demo-overrides
           
           echo "Verifying storage.ts content:"
           head -n 10 web/src/lib/storage.ts
