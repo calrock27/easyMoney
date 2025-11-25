@@ -15,16 +15,17 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Apply Demo Overrides
-        run: |
-          echo "Applying demo overrides..."
-          ls -R web/demo-overrides
-          cp -rf web/demo-overrides/. web/
-          rm -rf web/demo-overrides
+          cd web
+          echo "Applying demo overrides inside web/..."
+          ls -R demo-overrides
+          cp -rf demo-overrides/. .
+          rm -rf demo-overrides
           # Explicitly remove from git index if it exists
-          git rm -r --ignore-unmatch web/demo-overrides
+          git rm -r --ignore-unmatch demo-overrides
           
-          echo "Verifying web directory content:"
-          ls -la web/
+          echo "Verifying content:"
+          ls -la
+          cat next.config.ts
           
           echo "Verifying storage.ts content:"
           head -n 10 web/src/lib/storage.ts
