@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { User } from '@/types'
 import { getUser } from '@/app/actions/user'
+import { initializeStorage } from '@/lib/storage'
 
 interface UserContextType {
     user: User | null
@@ -17,6 +18,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true)
 
     useEffect(() => {
+        // Initialize demo storage
+        initializeStorage()
+
         async function restoreUser() {
             const storedUserId = localStorage.getItem('static_budget_user_id')
             if (storedUserId) {
