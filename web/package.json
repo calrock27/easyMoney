@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && echo '--- BUILD CONTENTS ---' && ls -F",
+    "build": "cat next.config.ts && next build && echo '--- BUILD CONTENTS ---' && ls -F",
     "start": "next start",
     "lint": "eslint"
   },
