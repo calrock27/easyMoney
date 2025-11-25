@@ -4,24 +4,43 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
+    paths:
+      - 'web/**'
+      - '.github/workflows/sync-demo.yml'
+
+permissions:
+  contents: write
 
 jobs:
-  sync:
+  sync-demo:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
 
       - name: Apply Demo Overrides
+        run: |
           cd web
           echo "Applying demo overrides inside web/..."
           ls -R demo-overrides
+          
           # Remove destination config to ensure overwrite
           rm -f next.config.ts
+          
           # Use rsync for reliable directory merging
           rsync -av demo-overrides/ .
+          
+          # Explicitly copy the config override if rsync missed it (due to rename)
+          if [ -f demo-overrides/next.config.ts.override ]; then
+            cp demo-overrides/next.config.ts.override next.config.ts
+          fi
+          
           rm -rf demo-overrides
           # Explicitly remove from git index if it exists
           git rm -r --ignore-unmatch demo-overrides
@@ -31,22 +50,18 @@ jobs:
           cat next.config.ts
           
           echo "Verifying storage.ts content:"
-          head -n 10 web/src/lib/storage.ts
+          head -n 10 src/lib/storage.ts
           
           # Verify a key file changed
-          if grep -q "@prisma/client" web/src/components/user-switcher.tsx; then
+          if grep -q "@prisma/client" src/components/user-switcher.tsx; then
             echo "Error: Overrides failed. @prisma/client still found in user-switcher.tsx"
             exit 1
           fi
           echo "Overrides applied successfully."
 
-      - name: Setup Git
-        run: |
-          git config user.name "GitHub Action"
-          git config user.email "action@github.com"
-
       - name: Commit and Push to Demo
         run: |
+          cd web
           git add .
-          git commit -m "chore: Sync demo branch with main [skip ci]"
+          git commit -m "chore: Sync demo branch with main [skip ci]" || echo "No changes to commit"
           git push -f origin HEAD:demo
