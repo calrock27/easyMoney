@@ -24,9 +24,12 @@ function generateId(): string {
 export function initializeStorage(): void {
     if (typeof window === 'undefined') return
 
+    let user: User
+
     // Initialize user if not exists
-    if (!localStorage.getItem(STORAGE_KEYS.USER)) {
-        const defaultUser: User = {
+    const userData = localStorage.getItem(STORAGE_KEYS.USER)
+    if (!userData) {
+        user = {
             id: generateId(),
             name: 'Demo User',
             currency: 'USD',
@@ -34,7 +37,14 @@ export function initializeStorage(): void {
             income: 0,
             createdAt: new Date().toISOString(),
         }
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(defaultUser))
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user))
+    } else {
+        user = JSON.parse(userData)
+    }
+
+    // Ensure UserProvider can find the user
+    if (!localStorage.getItem('static_budget_user_id')) {
+        localStorage.setItem('static_budget_user_id', user.id)
     }
 
     // Initialize expenses array if not exists
@@ -46,6 +56,11 @@ export function initializeStorage(): void {
     if (!localStorage.getItem(STORAGE_KEYS.CATEGORIES)) {
         localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify([]))
     }
+}
+
+// Auto-initialize on load
+if (typeof window !== 'undefined') {
+    initializeStorage()
 }
 
 // ============= USER OPERATIONS =============
