@@ -50,6 +50,10 @@ jobs:
           echo "Stripping 'use server' directives..."
           find src/app/actions -name "*.ts" -exec sed -i "s/'use server'//g" {} +
           
+          # Mock revalidatePath since it's a server-only API
+          echo "Mocking revalidatePath..."
+          find src/app/actions -name "*.ts" -exec sed -i "s/import { revalidatePath } from 'next\/cache'/const revalidatePath = (path: string) => {}/g" {} +
+          
           echo "Verifying content:"
           ls -la
           cat next.config.ts
