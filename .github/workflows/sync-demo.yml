@@ -52,7 +52,8 @@ jobs:
           
           # Mock revalidatePath since it's a server-only API
           echo "Mocking revalidatePath..."
-          find src/app/actions -name "*.ts" -exec sed -i "s/import { revalidatePath } from 'next\/cache'/const revalidatePath = (path: string) => {}/g" {} +
+          # Use 'c' command to replace the whole line containing next/cache
+          find src/app/actions -name "*.ts" -exec sed -i "/next\/cache/c\const revalidatePath = (path: string) => {}" {} +
           
           echo "Verifying content:"
           ls -la
