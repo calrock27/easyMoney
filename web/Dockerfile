@@ -58,4 +58,13 @@ ENV PORT 3000
 # set hostname to localhost
 ENV HOSTNAME "0.0.0.0"
 
+# Create data directory and symlink for uploads
+# We create /app/data/uploads and link it to public/uploads so files are served from the volume
+RUN mkdir -p /app/data/uploads && chown -R nextjs:nodejs /app/data
+RUN ln -sf /app/data/uploads ./public/uploads
+
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server.js"]

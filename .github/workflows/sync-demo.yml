@@ -46,6 +46,10 @@ jobs:
           # Explicitly remove from git index if it exists
           git rm -r --ignore-unmatch demo-overrides
           
+          # Strip 'use server' directives from actions to allow client-side execution
+          echo "Stripping 'use server' directives..."
+          find src/app/actions -name "*.ts" -exec sed -i "s/'use server'//g" {} +
+          
           echo "Verifying content:"
           ls -la
           cat next.config.ts

@@ -8,9 +8,10 @@ services:
     container_name: static-budget-app
     restart: always
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3333}:3000"
     volumes:
-      - ./web/prisma:/app/prisma # Persist SQLite DB
-      - ./web/public:/app/public # Persist uploads if any
+      - ${DATA_DIR:-./data}:/app/data
     environment:
-      - DATABASE_URL="file:./dev.db"
+      - DATABASE_URL=file:/app/data/dev.db
+      # If the app supports configuring upload dir via env, add it here.
+      # Otherwise, we rely on the symlink created in Dockerfile.
