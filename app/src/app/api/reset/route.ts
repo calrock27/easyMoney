@@ -16,13 +16,24 @@ export async function GET(request: Request) {
       SELECT name FROM sqlite_schema 
       WHERE type='table' 
       AND name NOT LIKE 'sqlite_%' 
-      AND name NOT LIKE '_prisma_migrations';
+      AND name NOT LIKE '_prisma_migrations'
+      AND name NOT LIKE '_cf_KV'
+      AND name NOT LIKE 'SystemState';
     `
 
         // Delete all data from each table
         for (const table of tables) {
+            if (table.name === 'SystemState') continue; // Don't wipe the state table
             await prisma.$executeRawUnsafe(`DELETE FROM "${table.name}";`)
         }
+
+        // Update last reset time
+        const now = Date.now().toString()
+        await prisma.systemState.upsert({
+            where: { key: 'lastReset' },
+            create: { key: 'lastReset', value: now },
+            update: { value: now }
+        })
 
         return NextResponse.json({ success: true, message: 'Database reset successfully' })
     } catch (error) {

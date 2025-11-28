@@ -39,3 +39,9 @@ model Category {
 
   @@unique([userId, name])
 }
+
+model SystemState {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

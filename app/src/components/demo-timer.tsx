@@ -8,23 +8,60 @@ export function DemoTimer({ className }: { className?: string }) {
     const [timeLeft, setTimeLeft] = useState('')
 
     useEffect(() => {
-        const calculateTimeLeft = () => {
+        const fetchStatus = async () => {
+            try {
+                const res = await fetch('/api/system/status')
+                const data = await res.json() as { lastReset?: string }
+                if (data.lastReset) {
+                    const lastReset = new Date(Number(data.lastReset))
+                    const nextReset = new Date(lastReset.getTime() + 60 * 60 * 1000) // +1 hour
+
+                    // If next reset is in the past (e.g. cron failed), default to next hour from now
+                    if (nextReset.getTime() < Date.now()) {
+                        const now = new Date()
+                        nextReset.setTime(now.getTime())
+                        nextReset.setHours(now.getHours() + 1, 0, 0, 0)
+                    }
+
+                    return nextReset
+                }
+            } catch (e) {
+                console.error('Failed to fetch status', e)
+            }
+            // Fallback
             const now = new Date()
             const nextHour = new Date(now)
             nextHour.setHours(now.getHours() + 1, 0, 0, 0)
+            return nextHour
+        }
 
-            const diff = nextHour.getTime() - now.getTime()
+        let nextResetTime: Date | null = null
+
+        const updateTimer = () => {
+            if (!nextResetTime) return
+
+            const now = new Date()
+            const diff = nextResetTime.getTime() - now.getTime()
+
+            if (diff <= 0) {
+                setTimeLeft('Resetting...')
+                // Refresh status if we hit zero
+                fetchStatus().then(time => nextResetTime = time)
+                return
+            }
+
             const minutes = Math.floor((diff / 1000 / 60) % 60)
             const seconds = Math.floor((diff / 1000) % 60)
 
-            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+            setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`)
         }
 
-        setTimeLeft(calculateTimeLeft())
+        fetchStatus().then(time => {
+            nextResetTime = time
+            updateTimer()
+        })
 
-        const timer = setInterval(() => {
-            setTimeLeft(calculateTimeLeft())
-        }, 1000)
+        const timer = setInterval(updateTimer, 1000)
 
         return () => clearInterval(timer)
     }, [])
