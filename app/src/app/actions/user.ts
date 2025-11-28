@@ -3,6 +3,13 @@
 import { getPrisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { logger } from '@/lib/logger'
+import { z } from 'zod'
+
+const CreateUserSchema = z.object({
+    name: z.string().min(1, "Name is required").max(50, "Name must be 50 characters or less"),
+    currency: z.string().min(3).max(3).optional().default('USD'),
+    theme: z.enum(['light', 'dark', 'system']).optional().default('system')
+})
 
 export async function getUsers() {
     logger.debug('Fetching users');
@@ -23,11 +30,20 @@ export async function createUser(name: string, currency: string = 'USD', theme: 
     logger.info(`Creating user: ${name} with currency: ${currency}`);
     const prisma = getPrisma();
     try {
+        const result = CreateUserSchema.safeParse({ name, currency, theme })
+
+        if (!result.success) {
+            logger.warn('Validation failed for createUser:', result.error.format());
+            return { success: false, error: result.error.issues[0].message }
+        }
+
+        const data = result.data;
+
         const user = await prisma.user.create({
             data: {
-                name,
-                currency,
-                theme
+                name: data.name,
+                currency: data.currency,
+                theme: data.theme as string
             }
         })
         logger.info(`User created successfully: ${user.id}`);

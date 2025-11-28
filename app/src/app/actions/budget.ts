@@ -3,12 +3,30 @@
 import { getPrisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { logger } from '@/lib/logger'
+import { z } from 'zod'
+
+const UpdateIncomeSchema = z.object({
+  userId: z.string().uuid("Invalid User ID"),
+  income: z.number().min(0, "Income must be positive").max(1000000000, "Income is too large")
+})
+
+const CreateExpenseSchema = z.object({
+  userId: z.string().uuid("Invalid User ID"),
+  name: z.string().min(1, "Name is required").max(50, "Name must be 50 characters or less"),
+  amount: z.number().positive("Amount must be positive").max(1000000000, "Amount is too large"),
+  category: z.string().min(1, "Category is required").max(30, "Category name is too long")
+})
 
 // Update User Income
 export async function updateIncome(userId: string, income: number) {
   logger.info(`Updating income for user: ${userId}, amount: ${income}`);
   const prisma = getPrisma();
   try {
+    const result = UpdateIncomeSchema.safeParse({ userId, income })
+    if (!result.success) {
+      return { success: false, error: result.error.issues[0].message }
+    }
+
     const user = await prisma.user.update({
       where: { id: userId },
       data: { income }
@@ -27,6 +45,11 @@ export async function createExpense(userId: string, name: string, amount: number
   logger.info(`Creating expense for user: ${userId}, amount: ${amount}, category: ${category}`);
   const prisma = getPrisma();
   try {
+    const result = CreateExpenseSchema.safeParse({ userId, name, amount, category })
+    if (!result.success) {
+      return { success: false, error: result.error.issues[0].message }
+    }
+
     const expense = await prisma.expense.create({
       data: {
         name,

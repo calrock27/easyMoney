@@ -16,10 +16,20 @@ const ImportSchema = z.object({
     categories: z.array(z.string()).optional()
 })
 
+const UpdateCurrencySchema = z.object({
+    userId: z.string().uuid("Invalid User ID"),
+    currency: z.string().min(3, "Currency code must be 3 characters").max(3, "Currency code must be 3 characters")
+})
+
 export async function updateCurrency(userId: string, currency: string) {
     logger.info(`Updating currency for user: ${userId}, currency: ${currency}`);
     const prisma = getPrisma();
     try {
+        const result = UpdateCurrencySchema.safeParse({ userId, currency })
+        if (!result.success) {
+            return { success: false, error: result.error.issues[0].message }
+        }
+
         await prisma.user.update({
             where: { id: userId },
             data: { currency }
