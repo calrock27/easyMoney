@@ -51,6 +51,11 @@ export function IncomeInput() {
                                 type="number"
                                 value={income}
                                 onChange={(e) => setIncome(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleSave()
+                                    }
+                                }}
                                 className="pl-6"
                                 autoFocus
                             />

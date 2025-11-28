@@ -74,7 +74,7 @@ export function DemoTimer({ className }: { className?: string }) {
     return (
         <div className={cn("flex items-center gap-2 text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-1 rounded-md", className)}>
             <Clock className="h-3 w-3" />
-            <span>Reset in {timeLeft}</span>
+            <span className="whitespace-nowrap">Reset in <span className="inline-block w-[3.5ch] text-center tabular-nums">{timeLeft}</span></span>
         </div>
     )
 }
