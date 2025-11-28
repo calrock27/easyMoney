@@ -1,0 +1,137 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useUser } from '@/components/providers/user-provider'
+import { getUsers, createUser } from '@/app/actions/user'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { User } from '@prisma/client'
+import { Plus, User as UserIcon, ArrowRight } from 'lucide-react'
+import { Logo } from '@/components/logo'
+
+export function UserSwitcher() {
+    const { setUser } = useUser()
+    const [users, setUsers] = useState<User[]>([])
+    const [isCreating, setIsCreating] = useState(false)
+    const [newUserName, setNewUserName] = useState('')
+    const [isLoading, setIsLoading] = useState(true)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [error, setError] = useState('')
+
+    useEffect(() => {
+        loadUsers()
+    }, [])
+
+    async function loadUsers() {
+        setIsLoading(true)
+        const res = await getUsers()
+        if (res.success && res.data) {
+            setUsers(res.data)
+        }
+        setIsLoading(false)
+    }
+
+    async function handleCreateUser(e: React.FormEvent) {
+        e.preventDefault()
+        if (!newUserName.trim()) return
+
+        setIsSubmitting(true)
+        setError('')
+
+        try {
+            const res = await createUser(newUserName)
+            if (res.success && res.data) {
+                setUsers([res.data, ...users])
+                setUser(res.data)
+                setNewUserName('')
+                setIsCreating(false)
+            } else {
+                setError(res.error || 'Failed to create profile')
+            }
+        } catch (err) {
+            setError('An unexpected error occurred')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    if (isLoading) {
+        return <div className="flex justify-center p-8">Loading profiles...</div>
+    }
+
+    return (
+        <div className="flex min-h-screen flex-col items-center justify-start md:justify-center bg-background p-4 pt-20 md:pt-4 gap-8">
+            <Logo size="lg" />
+            <Card className="w-full max-w-md">
+                <CardHeader>
+                    <CardTitle className="text-center text-2xl font-bold">
+                        {isCreating ? 'Create Profile' : 'Who is spending?'}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {isCreating ? (
+                        <form onSubmit={handleCreateUser} className="space-y-4">
+                            <Input
+                                placeholder="Enter your name"
+                                value={newUserName}
+                                onChange={(e) => {
+                                    setNewUserName(e.target.value)
+                                    setError('')
+                                }}
+                                autoFocus
+                            />
+                            {error && <p className="text-sm text-destructive text-center">{error}</p>}
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="flex-1"
+                                    onClick={() => {
+                                        setIsCreating(false)
+                                        setError('')
+                                        setNewUserName('')
+                                    }}
+                                    disabled={isSubmitting}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button type="submit" className="flex-1" disabled={isSubmitting || !newUserName.trim()}>
+                                    {isSubmitting ? 'Creating...' : 'Create'}
+                                </Button>
+                            </div>
+                        </form>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="grid gap-2">
+                                {users.map((user) => (
+                                    <Button
+                                        key={user.id}
+                                        variant="outline"
+                                        className="h-14 justify-between px-4 text-lg"
+                                        onClick={() => setUser(user)}
+                                    >
+                                        <span className="flex items-center gap-3">
+                                            <UserIcon className="h-5 w-5 text-muted-foreground" />
+                                            {user.name}
+                                        </span>
+                                        <ArrowRight className="h-4 w-4 opacity-50" />
+                                    </Button>
+                                ))}
+                            </div>
+
+                            <Button
+                                variant="ghost"
+                                className="w-full gap-2 border-dashed border-2 h-12"
+                                onClick={() => setIsCreating(true)}
+                            >
+                                <Plus className="h-4 w-4" />
+                                New Profile
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    )
+}

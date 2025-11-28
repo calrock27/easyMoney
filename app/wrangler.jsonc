@@ -1,0 +1,15 @@
+{
+  "name": "easymoney-demo",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "pages_build_output_dir": ".vercel/output/static",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "easymoney-demo-db",
+      "database_id": "5e49a2df-c907-4be2-9639-4bf9e2e93e46"
+    }
+  ]
+}

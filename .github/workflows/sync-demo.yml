@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'web/**'
+      - 'app/**'
       - '.github/workflows/sync-demo.yml'
   workflow_dispatch:
 
@@ -27,8 +27,8 @@ jobs:
 
       - name: Apply Demo Overrides
         run: |
-          cd web
-          echo "Applying demo overrides inside web/..."
+          cd app
+          echo "Applying demo overrides inside app/..."
           ls -R demo-overrides
           
           # Remove destination config to ensure overwrite
@@ -71,7 +71,7 @@ jobs:
 
       - name: Commit and Push to Demo
         run: |
-          cd web
+          cd app
           git add .
           git commit -m "chore: Sync demo branch with main" || echo "No changes to commit"
           git push -f origin HEAD:demo
