@@ -1,5 +1,6 @@
 -- CreateTable
-CREATE TABLE "User" (
+-- CreateTable
+CREATE TABLE IF NOT EXISTS "User" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'USD',
@@ -9,7 +10,7 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
-CREATE TABLE "Expense" (
+CREATE TABLE IF NOT EXISTS "Expense" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "amount" REAL NOT NULL,
@@ -19,7 +20,7 @@ CREATE TABLE "Expense" (
 );
 
 -- CreateTable
-CREATE TABLE "Category" (
+CREATE TABLE IF NOT EXISTS "Category" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -27,4 +28,4 @@ CREATE TABLE "Category" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Category_userId_name_key" ON "Category"("userId", "name");
+CREATE UNIQUE INDEX IF NOT EXISTS "Category_userId_name_key" ON "Category"("userId", "name");
