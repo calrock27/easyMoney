@@ -30,6 +30,10 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
+# Remove edge runtime config for Docker build as we want to use Node.js runtime
+RUN find src -name "*.tsx" -o -name "*.ts" | xargs sed -i "s/export const runtime = 'edge'//g"
+RUN find src -name "*.tsx" -o -name "*.ts" | xargs sed -i 's/export const runtime = "edge"//g'
+
 RUN npm run build
 
 # Production image, copy all the files and run next

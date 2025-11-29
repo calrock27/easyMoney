@@ -1,14 +1,14 @@
-version: '3'
-
 services:
-  app:
+  easyMoney:
     image: calrock/easymoney:latest
     container_name: easyMoney
     restart: always
     ports:
       - "3186:3186"
     volumes:
-      - ./data:/app/data
+      - easyMoney:/app/data
+    #    You can use a bind mount instead of a volume if you prefer      
+    #      - path/to/your/easyMoney-data:/app/data
     environment:
       - DATABASE_URL=file:/app/data/easyMoney.db
       - LOG_LEVEL=INFO

@@ -38,7 +38,7 @@ You can deploy easyMoney using the pre-built Docker image.
 ```bash
 docker run -d \
   -p 3186:3186 \
-  -v $(pwd)/data:/app/data \
+  -v easyMoney-data:/app/data \
   --name easymoney \
   --restart unless-stopped \
   calrock/easymoney:latest
@@ -47,5 +47,6 @@ docker run -d \
 or using the docker-compose.yml file:
 
 ```bash
+mkdir -p %your bind mount path% && sudo chown -R 1001:1001 %your bind mount path%
 docker compose up -d
 ```
