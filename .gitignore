@@ -1,1 +1,8 @@
 CRON_SECRET.txt
+*.db
+node_modules
+.next
+.env
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
