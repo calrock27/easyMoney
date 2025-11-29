@@ -14,25 +14,14 @@ export function DemoTimer({ className }: { className?: string }) {
                 const data = await res.json() as { lastReset?: string }
                 if (data.lastReset) {
                     const lastReset = new Date(Number(data.lastReset))
-                    const nextReset = new Date(lastReset.getTime() + 60 * 1000) // +60 seconds
-
-                    // If next reset is in the past (e.g. cron failed), default to next minute from now
-                    if (nextReset.getTime() < Date.now()) {
-                        const now = new Date()
-                        nextReset.setTime(now.getTime())
-                        nextReset.setMinutes(now.getMinutes() + 1, 0, 0)
-                    }
+                    const nextReset = new Date(lastReset.getTime() + 60 * 60 * 1000) // +1 hour
 
                     return nextReset
                 }
             } catch (e) {
                 console.error('Failed to fetch status', e)
             }
-            // Fallback
-            const now = new Date()
-            const nextMinute = new Date(now)
-            nextMinute.setMinutes(now.getMinutes() + 1, 0, 0)
-            return nextMinute
+            return null
         }
 
         let nextResetTime: Date | null = null
