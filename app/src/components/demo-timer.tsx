@@ -14,13 +14,13 @@ export function DemoTimer({ className }: { className?: string }) {
                 const data = await res.json() as { lastReset?: string }
                 if (data.lastReset) {
                     const lastReset = new Date(Number(data.lastReset))
-                    const nextReset = new Date(lastReset.getTime() + 60 * 60 * 1000) // +1 hour
+                    const nextReset = new Date(lastReset.getTime() + 60 * 1000) // +60 seconds
 
-                    // If next reset is in the past (e.g. cron failed), default to next hour from now
+                    // If next reset is in the past (e.g. cron failed), default to next minute from now
                     if (nextReset.getTime() < Date.now()) {
                         const now = new Date()
                         nextReset.setTime(now.getTime())
-                        nextReset.setHours(now.getHours() + 1, 0, 0, 0)
+                        nextReset.setMinutes(now.getMinutes() + 1, 0, 0)
                     }
 
                     return nextReset
@@ -30,9 +30,9 @@ export function DemoTimer({ className }: { className?: string }) {
             }
             // Fallback
             const now = new Date()
-            const nextHour = new Date(now)
-            nextHour.setHours(now.getHours() + 1, 0, 0, 0)
-            return nextHour
+            const nextMinute = new Date(now)
+            nextMinute.setMinutes(now.getMinutes() + 1, 0, 0)
+            return nextMinute
         }
 
         let nextResetTime: Date | null = null
