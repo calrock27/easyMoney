@@ -22,10 +22,10 @@ export async function GET(request: Request) {
     `
 
         // Delete all data from each table
+        // Delete all data from each table
         for (const table of tables) {
             if (table.name === 'SystemState') continue; // Don't wipe the state table
             await prisma.$executeRawUnsafe(`DELETE FROM "${table.name}";`)
-            console.log(`Wiped table: ${table.name}`)
         }
 
         // Update last reset time
