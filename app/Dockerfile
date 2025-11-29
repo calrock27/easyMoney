@@ -60,7 +60,7 @@ RUN mkdir -p /app/data/uploads && chown -R nextjs:nodejs /app/data
 RUN ln -sf /app/data/uploads ./public/uploads
 
 # Install pinned versions of npm and prisma globally
-RUN npm install -g npm@10.9.2 prisma@6.19.0
+RUN npm install -g npm@11.6.4 prisma@6.19.0
 
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
