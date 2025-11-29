@@ -46,3 +46,15 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations apply easymoney-demo-db --remote
           workingDirectory: app
+
+      - name: Deploy Cron Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          workingDirectory: workers/cron
+          secrets: |
+            CRON_SECRET
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
