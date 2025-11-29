@@ -2,9 +2,7 @@ version: '3'
 
 services:
   app:
-    build:
-      context: ./app
-      dockerfile: Dockerfile
+    image: calrock/easymoney:latest
     container_name: easyMoney
     restart: always
     ports:
