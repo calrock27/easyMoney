@@ -42,3 +42,9 @@ next-env.d.ts
 
 # database
 *.db
+
+# playwright
+/playwright.config.ts
+/tests
+/playwright-report
+/test-results
