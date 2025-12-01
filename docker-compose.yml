@@ -11,6 +11,7 @@ services:
     #      - path/to/your/easyMoney-data:/app/data
     environment:
       - DATABASE_URL=file:/app/data/easyMoney.db
+      - HOSTNAME=0.0.0.0
       - LOG_LEVEL=INFO
       - PORT=3186
     security_opt:
@@ -24,7 +25,7 @@ services:
     cap_add:
       - NET_BIND_SERVICE
     healthcheck:
-      test: wget -q --spider http://localhost:$${PORT}
+      test: wget -q --spider http://127.0.0.1:$${PORT}
       interval: 30s
       timeout: 3s
       retries: 3
