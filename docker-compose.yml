@@ -24,7 +24,7 @@ services:
     cap_add:
       - NET_BIND_SERVICE
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:$${PORT}" ]
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:$${PORT}" ]
       interval: 30s
       timeout: 3s
       retries: 3
