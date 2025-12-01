@@ -11,7 +11,7 @@ export const runtime = 'edge';
 export const metadata: Metadata = {
   title: "easyMoney",
   description: "Simple monthly budget tracker",
-  manifest: "/manifest.json",
+
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -41,6 +41,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="manifest" href="/manifest.json" crossOrigin="use-credentials" />
+      </head>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"

@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { User } from '@prisma/client'
 import { getUser } from '@/app/actions/user'
+import { useTheme } from 'next-themes'
 
 interface UserContextType {
     user: User | null
@@ -15,6 +16,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined)
 export function UserProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const { setTheme } = useTheme()
 
     useEffect(() => {
         async function restoreUser() {
@@ -23,6 +25,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 const res = await getUser(storedUserId)
                 if (res.success && res.data) {
                     setUser(res.data)
+                    if (res.data.theme) {
+                        setTheme(res.data.theme)
+                    }
                 } else {
                     localStorage.removeItem('static_budget_user_id')
                 }
@@ -36,6 +41,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setUser(newUser)
         if (newUser) {
             localStorage.setItem('static_budget_user_id', newUser.id)
+            if (newUser.theme) {
+                setTheme(newUser.theme)
+            }
         } else {
             localStorage.removeItem('static_budget_user_id')
         }

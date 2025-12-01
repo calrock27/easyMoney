@@ -111,3 +111,20 @@ export async function switchUser(userId: string) {
         return { success: false, error: 'Failed to switch user' }
     }
 }
+
+export async function updateUserTheme(userId: string, theme: string) {
+    logger.info(`Updating theme for user: ${userId} to ${theme}`);
+    const prisma = getPrisma();
+    try {
+        await prisma.user.update({
+            where: { id: userId },
+            data: { theme }
+        })
+        logger.info(`Theme updated successfully for user: ${userId}`);
+        revalidatePath('/')
+        return { success: true }
+    } catch (error) {
+        logger.error('Error updating user theme:', error);
+        return { success: false, error: 'Failed to update user theme' }
+    }
+}

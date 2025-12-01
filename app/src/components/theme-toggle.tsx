@@ -5,6 +5,8 @@ import * as React from "react"
 import { Moon, Sun, Laptop } from "lucide-react"
 import { useTheme } from "next-themes"
 import { MountFuji } from "@/components/icons/mount-fuji"
+import { useUser } from "@/components/providers/user-provider"
+import { updateUserTheme } from "@/app/actions/user"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -16,6 +18,14 @@ import {
 
 export function ThemeToggle() {
     const { setTheme } = useTheme()
+    const { user } = useUser()
+
+    const handleThemeChange = async (theme: string) => {
+        setTheme(theme)
+        if (user) {
+            await updateUserTheme(user.id, theme)
+        }
+    }
 
     return (
         <DropdownMenu>
@@ -27,19 +37,19 @@ export function ThemeToggle() {
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setTheme("light")}>
+                <DropdownMenuItem onClick={() => handleThemeChange("light")}>
                     <Sun className="mr-2 h-4 w-4" />
                     Light
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("dark")}>
+                <DropdownMenuItem onClick={() => handleThemeChange("dark")}>
                     <Moon className="mr-2 h-4 w-4" />
                     Dark
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("tokyo")}>
+                <DropdownMenuItem onClick={() => handleThemeChange("tokyo")}>
                     <MountFuji className="mr-2 h-4 w-4" />
                     Tokyo
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("system")}>
+                <DropdownMenuItem onClick={() => handleThemeChange("system")}>
                     <Laptop className="mr-2 h-4 w-4" />
                     System
                 </DropdownMenuItem>
